@@ -1,0 +1,1 @@
+copy /Y ".\settings.cfg" "%USERPROFILE%\Saved Games\Respawn\Apex\local\settings.cfg"
