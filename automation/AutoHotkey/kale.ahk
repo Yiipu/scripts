@@ -13,13 +13,16 @@ texts := [
     "延迟太高",
     "被蒙到了",
     "地震了",
-    "喝水呢"
+    "喝水呢",
+    "没消化好",
+    "刚是我奶在玩",
+    "刚鹿完"
 ]
 
 !F1:: {
     Send "{Enter}"
     Sleep 100
-	Randindex := Random(1, texts.Length)
+    Randindex := Random(1, texts.Length)
     Send texts[Randindex]
     Sleep 100
     Send "{Enter}"
