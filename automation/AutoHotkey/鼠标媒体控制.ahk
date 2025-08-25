@@ -1,44 +1,45 @@
-#HotIf GetKeyState("XButton1", "P") && MouseIsOver("ahk_class Shell_TrayWnd")
-WheelUp::
-WheelDown::
-    switch_speaker(hk)
-    {
-        global cur_speaker
-        if(InStr(hk, "WheelUp"))
-            cur_speaker += 1
-        else
-            cur_speaker -= 1
-        if (cur_speaker < 1)
-            cur_speaker := Speakers.Length
-        else if (cur_speaker > Speakers.Length)
-            cur_speaker := 1
-        SetDefaultEndpoint(Speakers[cur_speaker]["ID"])
-        ToolTip(Format("当前播放设备:{}", Speakers[cur_speaker]["Name"]))
-        SetTimer () => ToolTip(), -1000
-    }
-
-MButton & WheelUp::
-MButton & WheelDown::
-    switch_microphone(hk)
-    {
-        global cur_microphone
-        if(InStr(hk, "WheelUp"))
-            cur_microphone += 1
-        else
-            cur_microphone -= 1
-        if (cur_microphone < 1)
-            cur_microphone := Microphones.Length
-        else if (cur_microphone > Microphones.Length)
-            cur_microphone := 1
-        SetDefaultEndpoint(Microphones[cur_microphone]["ID"])
-        ToolTip(Format("当前录音设备:{}", Microphones[cur_microphone]["Name"]))
-        SetTimer () => ToolTip(), -1000
-    }
-
 #HotIf MouseIsOver("ahk_class Shell_TrayWnd")
-WheelUp::Send("{Volume_Up}")
-WheelDown::Send("{Volume_Down}")
-MButton::Send("{Media_Play_Pause}")
+XButton1:: switch_device(0, 0)
+XButton2:: switch_device(0, 1)
+~LButton & XButton1:: switch_device(1, 0)
+~LButton & XButton2:: switch_device(1, 1)
+WheelUp:: Send("{Volume_Up}")
+WheelDown:: Send("{Volume_Down}")
+MButton:: Send("{Media_Play_Pause}")
+
+/**
+ * Switches the media device based on the specified type and rotation direction.
+ * 
+ * @param {Number} type - The type of device to switch (0 for speaker, 1 for microphone).
+ * @param {Boolean} rotate_forward - If true, rotates to the next device; if false, rotates to the previous device.
+ */
+switch_device(type, rotate_forward) {
+    global cur_speaker, cur_microphone, Speakers, Microphones
+    if (type = 0) {
+        cur := cur_speaker
+        list := Speakers
+        label := "当前播放设备:{}"
+    } else {
+        cur := cur_microphone
+        list := Microphones
+        label := "当前录音设备:{}"
+    }
+    if (rotate_forward = 1)
+        cur += 1
+    else
+        cur -= 1
+    if (cur < 1)
+        cur := list.Length
+    else if (cur > list.Length)
+        cur := 1
+    SetDefaultEndpoint(list[cur]["ID"])
+    ToolTip(Format(label, list[cur]["Name"]))
+    SetTimer () => ToolTip(), -1000
+    if (type = "speaker")
+        cur_speaker := cur
+    else
+        cur_microphone := cur
+}
 
 MouseIsOver(WinTitle) {
     hwnd := WinGetID("A")
@@ -56,7 +57,7 @@ Microphones := EnumAudioEndpoints(1)
 global cur_speaker := 1
 global cur_microphone := 1
 
-/*
+/* 设备列表
 List := EnumAudioEndpoints()
 Devices := ""
 for Device in List
@@ -83,39 +84,38 @@ MsgBox(Devices)
         ID      Endpoint ID string that identifies the audio endpoint device.
         Name    The friendly name of the endpoint device.
 */
-EnumAudioEndpoints(DataFlow := 2, StateMask := 1)
-{
+EnumAudioEndpoints(DataFlow := 2, StateMask := 1) {
     List := []
 
     ; IMMDeviceEnumerator interface.
     ; https://docs.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nn-mmdeviceapi-immdeviceenumerator
-    IMMDeviceEnumerator := ComObject("{BCDE0395-E52F-467C-8E3D-C4579291692E}", "{A95664D2-9614-4F35-A746-DE8DB63617E6}")
+    IMMDeviceEnumerator := ComObject("{BCDE0395-E52F-467C-8E3D-C4579291692E}", "{A95664D2-9614-4F35-A746-DE8DB63617E6}"
+    )
 
     ; IMMDeviceEnumerator::EnumAudioEndpoints method.
     ; https://docs.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-immdeviceenumerator-enumaudioendpoints
-    ComCall(3, IMMDeviceEnumerator, "UInt", DataFlow, "UInt", StateMask, "UPtrP", &IMMDeviceCollection:=0)
+    ComCall(3, IMMDeviceEnumerator, "UInt", DataFlow, "UInt", StateMask, "UPtrP", &IMMDeviceCollection := 0)
 
     ; IMMDeviceCollection::GetCount method.
     ; https://docs.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-immdevicecollection-getcount
-    ComCall(3, IMMDeviceCollection, "UIntP", &DevCount:=0)  ; Retrieves a count of the devices in the device collection.
+    ComCall(3, IMMDeviceCollection, "UIntP", &DevCount := 0)  ; Retrieves a count of the devices in the device collection.
 
-    loop DevCount
-    {
+    loop DevCount {
         List.Push(Device := Map())
 
         ; IMMDeviceCollection::Item method.
         ; https://docs.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-immdevicecollection-item
-        ComCall(4, IMMDeviceCollection, "UInt", A_Index-1, "UPtrP", &IMMDevice:=0)
+        ComCall(4, IMMDeviceCollection, "UInt", A_Index - 1, "UPtrP", &IMMDevice := 0)
 
         ; IMMDevice::GetId method.
         ; https://docs.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-immdevice-getid
-        ComCall(5, IMMDevice, "PtrP", &pBuffer:=0)
+        ComCall(5, IMMDevice, "PtrP", &pBuffer := 0)
         Device["ID"] := StrGet(pBuffer)
         DllCall("Ole32.dll\CoTaskMemFree", "UPtr", pBuffer)
 
         ; MMDevice::OpenPropertyStore method.
         ; https://docs.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-immdevice-openpropertystore
-        ComCall(4, IMMDevice, "UInt", 0x00000000, "UPtrP", &IPropertyStore:=0)
+        ComCall(4, IMMDevice, "UInt", 0x00000000, "UPtrP", &IPropertyStore := 0)
 
         Device["Name"] := GetDeviceProp(IPropertyStore, "{A45C254E-DF1C-4EFD-8020-67D146A850E0}", 14)
 
@@ -134,8 +134,7 @@ EnumAudioEndpoints(DataFlow := 2, StateMask := 1)
         0x1   Default Device.
         0x2   Default Communication Device.
 */
-SetDefaultEndpoint(DeviceID, Role := 3)
-{
+SetDefaultEndpoint(DeviceID, Role := 3) {
     ; Undocumented COM-interface IPolicyConfig.
     IPolicyConfig := ComObject("{870AF99C-171D-4F9E-AF0D-E63Df40c2BC9}", "{F8679F50-850A-41CF-9C72-430F290290C8}")
     if (Role & 0x1)
@@ -152,53 +151,45 @@ SetDefaultEndpoint(DeviceID, Role := 3)
     A45C254E-DF1C-4EFD-8020-67D146A850E0, 2   The device description of the endpoint device.
     A45C254E-DF1C-4EFD-8020-67D146A850E0,14   The friendly name of the endpoint device.
 */
-InitDeviceProp(clsid, n)
-{
-    clsid := CLSIDFromString(clsid, Buffer(16+4))
+InitDeviceProp(clsid, n) {
+    clsid := CLSIDFromString(clsid, Buffer(16 + 4))
     NumPut("Int", n, clsid, 16)
     return clsid
 }
 
-GetDeviceProp(ptr, clsid, n)
-{
+GetDeviceProp(ptr, clsid, n) {
     ; IPropertyStore::GetValue method.
     ; https://docs.microsoft.com/en-us/windows/win32/api/propsys/nf-propsys-ipropertystore-getvalue
     ComCall(5, ptr, "Ptr", InitDeviceProp(clsid, n), "Ptr", pvar := PropVariant())
     return String(pvar)
 }
 
-GetDeviceID(list, name)
-{
+GetDeviceID(list, name) {
     for device in list
         if InStr(device["Name"], name)
             return device["ID"]
-    throw
+    throw ValueError("Device not found")
 }
 
-CLSIDFromString(Str, Buffer := 0)
-{
+CLSIDFromString(Str, Buffer := 0) {
     if (!Buffer)
         Buffer := Buffer(16)
     DllCall("Ole32\CLSIDFromString", "Str", Str, "Ptr", Buffer, "HRESULT")
     return Buffer
 }
 
-class PropVariant
-{
-    __New()
-    {
+class PropVariant {
+    __New() {
         this.buffer := Buffer(A_PtrSize == 4 ? 16 : 24)
-        this.ptr    := this.buffer.ptr
-        this.size   := this.buffer.size
+        this.ptr := this.buffer.ptr
+        this.size := this.buffer.size
     }
 
-    __Delete()
-    {
+    __Delete() {
         DllCall("Ole32\PropVariantClear", "Ptr", this.ptr, "HRESULT")
     }
 
-    ToString()
-    {
+    ToString() {
         return StrGet(NumGet(this.ptr, 8, "UPtr"))  ; LPWSTR PROPVARIANT.pwszVal
     }
 }
