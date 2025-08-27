@@ -58,15 +58,17 @@ MouseIsOver(WinTitle) {
 Speakers := EnumAudioEndpoints(0)
 Microphones := EnumAudioEndpoints(1)
 
-global cur_speaker := 1
-global cur_microphone := 1
+global cur_speaker := GetDeviceIndex(Speakers, GetDefaultAudioDevices(0))
+global cur_microphone := GetDeviceIndex(Microphones, GetDefaultAudioDevices(1))
 
 /*
 ; 查看设备列表
-List := EnumAudioEndpoints(0)
-Devices := ""
-for Device in List
-    Devices .= Format("{} ({})`n`n", Device["Name"], Device["ID"])
+Devices := "扬声器:`n"
+for i, d in Speakers
+    Devices .= (i = cur_speaker ? "> " : "  ") . Format("{} ({})`n", d["Name"], d["ID"])
+Devices .= "`n麦克风:`n"
+for i, d in Microphones
+    Devices .= (i = cur_microphone ? "> " : "  ") . Format("{} ({})`n", d["Name"], d["ID"])
 MsgBox(Devices)
 */
 
@@ -133,6 +135,19 @@ EnumAudioEndpoints(DataFlow := 2, StateMask := 1) {
     return List
 }
 
+GetDefaultAudioDevices(type) {
+    ; IMMDeviceEnumerator::GetDefaultAudioEndpoint
+    IMMDeviceEnumerator := ComObject("{BCDE0395-E52F-467C-8E3D-C4579291692E}", "{A95664D2-9614-4F35-A746-DE8DB63617E6}"
+    )
+    ComCall(4, IMMDeviceEnumerator, "UInt", type, "UInt", 0, "UPtrP", &IMMDevice := 0)
+    ; IMMDevice::GetId
+    ComCall(5, IMMDevice, "PtrP", &pBuffer := 0)
+    id := StrGet(pBuffer)
+    DllCall("Ole32.dll\CoTaskMemFree", "UPtr", pBuffer)
+    ObjRelease(IMMDevice)
+    return id
+}
+
 /*
     Set default audio render endpoint.
     Role:
@@ -173,6 +188,13 @@ GetDeviceID(list, name) {
     for device in list
         if InStr(device["Name"], name)
             return device["ID"]
+    throw ValueError("Device not found")
+}
+
+GetDeviceIndex(list, id) {
+    for index, device in list
+        if (id = device["ID"])
+            return index
     throw ValueError("Device not found")
 }
 
