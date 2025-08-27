@@ -15,30 +15,17 @@ MButton:: Send("{Media_Play_Pause}")
  */
 switch_device(type, rotate_forward) {
     global cur_speaker, cur_microphone, Speakers, Microphones
-    if (type = 0) {
-        cur := cur_speaker
-        list := Speakers
-        label := "当前播放设备:{}"
-    } else {
-        cur := cur_microphone
-        list := Microphones
-        label := "当前录音设备:{}"
-    }
-    if (rotate_forward = 1)
-        cur += 1
-    else
-        cur -= 1
-    if (cur < 1)
-        cur := list.Length
-    else if (cur > list.Length)
-        cur := 1
+    list := type ? Microphones : Speakers
+    cur := type ? cur_microphone : cur_speaker
+    cur += rotate_forward ? 1 : -1
+    cur := cur < 1 ? list.Length : cur > list.Length ? 1 : cur
     SetDefaultEndpoint(list[cur]["ID"])
-    ToolTip(Format(label, list[cur]["Name"]))
-    SetTimer () => ToolTip(), -1000
-    if (type = 0)
-        cur_speaker := cur
-    else
+    ToolTip(Format(type ? "当前录音设备:{}" : "当前播放设备:{}", list[cur]["Name"]))
+    SetTimer(() => ToolTip(), -1000)
+    if type
         cur_microphone := cur
+    else
+        cur_speaker := cur
 }
 
 MouseIsOver(WinTitle) {
