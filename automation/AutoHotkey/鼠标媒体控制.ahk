@@ -8,10 +8,10 @@ WheelDown:: Send("{Volume_Down}")
 MButton:: Send("{Media_Play_Pause}")
 
 /**
- * Switches the media device based on the specified type and rotation direction.
+ * 切换媒体设备
  * 
- * @param {Number} type - The type of device to switch (0 for speaker, 1 for microphone).
- * @param {Boolean} rotate_forward - If true, rotates to the next device; if false, rotates to the previous device.
+ * @param {Number} type - 设备类型 (0 为扬声器, 1 为麦克风).
+ * @param {Boolean} rotate_forward - 如果为 1, 则切换到下一个设备; 如果为 0, 则切换到上一个设备.
  */
 switch_device(type, rotate_forward) {
     global cur_speaker, cur_microphone, Speakers, Microphones
@@ -35,14 +35,18 @@ switch_device(type, rotate_forward) {
     SetDefaultEndpoint(list[cur]["ID"])
     ToolTip(Format(label, list[cur]["Name"]))
     SetTimer () => ToolTip(), -1000
-    if (type = "speaker")
+    if (type = 0)
         cur_speaker := cur
     else
         cur_microphone := cur
 }
 
 MouseIsOver(WinTitle) {
-    hwnd := WinGetID("A")
+    try {
+        hwnd := WinGetID("A")
+    } catch {
+        hwnd := 0
+    }
     return WinExist(WinTitle) && WinGetID(WinTitle) = hwnd
 }
 #HotIf
@@ -57,8 +61,9 @@ Microphones := EnumAudioEndpoints(1)
 global cur_speaker := 1
 global cur_microphone := 1
 
-/* 设备列表
-List := EnumAudioEndpoints()
+/*
+; 查看设备列表
+List := EnumAudioEndpoints(0)
 Devices := ""
 for Device in List
     Devices .= Format("{} ({})`n`n", Device["Name"], Device["ID"])
