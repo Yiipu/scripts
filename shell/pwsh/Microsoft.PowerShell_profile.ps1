@@ -27,44 +27,6 @@ function Set-LocationFromLnk {
 }
 Set-Alias -Name cdlnk -Value Set-LocationFromLnk
 
-function genpass {
-	
-	param (
-		[int]$length = 16
-	)
-
-	# 定义字符集合：大写、小写、数字、特殊字符
-	$upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-	$lower = 'abcdefghijklmnopqrstuvwxyz'
-	$numbers = '0123456789'
-	$special = '!@#$%^&*()-_=+[]{}|;:,.<>?'
-
-	# 合并字符集
-	$allChars = ($upper + $lower + $numbers + $special).ToCharArray()
-
-	# 随机数生成器
-	$rand = New-Object System.Random
-
-	# 从各类字符中至少选一个，保证复杂性
-	$password = ""
-	$password += $upper[$rand.Next(0, $upper.Length)]
-	$password += $lower[$rand.Next(0, $lower.Length)]
-	$password += $numbers[$rand.Next(0, $numbers.Length)]
-	$password += $special[$rand.Next(0, $special.Length)]
-
-	# 剩余字符随机选择
-	for ($i = $password.Length; $i -lt $length; $i++) {
-		$password += $allChars[$rand.Next(0, $allChars.Length)]
-	}
-
-	# 打乱密码顺序
-	$password = ($password.ToCharArray() | Sort-Object {Get-Random}) -join ''
-	Set-Clipboard $password
-
-	# 输出密码
-	Write-Output "生成的密码：$password`n已复制到剪贴板"
-}
-
 function Compress-HighBitrateVideos {
     param (
         [string]$DirectoryPath
